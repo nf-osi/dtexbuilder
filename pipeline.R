@@ -1,4 +1,5 @@
-##putting it all together
+#putting it all together
+options(java.parameters = '-Xmx16g')
 dtexbuilder::syn_login()
 
 #Chembl
@@ -12,16 +13,16 @@ dgidb_df <- dtexbuilder::prepare_dgidb_data("https://www.dgidb.org/data/monthly_
 dtexbuilder::prepare_dgidb_names_for_pubchem(dgidb_df)
 
 dgidb <- dtexbuilder::process_dgidb(dgidb_df, 
-                           path_to_inchi_tsv = "~/Downloads/ids.txt",
-                           path_to_inchikey_tsv = "~/Downloads/inchikey.txt",
-                           path_to_smiles_tsv = "~/Downloads/smiles.txt")
+                                    path_to_inchi_tsv = "~/ids.txt",
+                                    path_to_inchikey_tsv = "~/inchikey.txt",
+                                    path_to_smiles_tsv = "~/smiles.txt")
 
 #ChemicalProbes
 chemicalprobes <- dtexbuilder::process_chemicalprobes('syn25253561')
 
 #DrugBank
-drugbank <- dtexbuilder::process_drugbank("syn12685088", 
-                                          "syn12973257")
+drugbank <- dtexbuilder::process_drugbank(db_synapse_id = "syn25323646",
+                                          structures_synapse_id = "syn25323608")
 
 structures <- dtexbuilder::process_structures(chembl$structures, 
                                               dgidb$structures,
@@ -29,31 +30,83 @@ structures <- dtexbuilder::process_structures(chembl$structures,
                                               drugbank$structures)
 
 activities <- dtexbuilder::process_activities(processed_structures = structures,
-                                 chembl$activities, 
-                                 dgidb$activities,
-                                 chemicalprobes$activities,
-                                 drugbank$activities)
+                                              chembl$activities, 
+                                              dgidb$activities,
+                                              chemicalprobes$activities,
+                                              drugbank$activities)
 
 names <- dtexbuilder::process_names(processed_structures = structures,
-                       processed_activities = activities,
-                       chembl$names,
-                       dgidb$names,
-                       chemicalprobes$names)
+                                    processed_activities = activities,
+                                    chembl$names,
+                                    dgidb$names,
+                                    chemicalprobes$names)
 
 external_ids <- dtexbuilder::process_external_ids(processed_structures = structures, 
-                                     processed_activities = activities)
+                                                  processed_activities = activities)
 
 distinct_structures <- dtexbuilder::filter_structures(processed_structures = structures, processed_activities = activities)
 
-fingerprints_circular <- dtexbuilder::generate_fingerprints(structure_df = structures, type = "circular")
-fingerprints_maccs <- dtexbuilder::generate_fingerprints(structure_df = structures, type = "maccs")
-fingerprints_extended <- dtexbuilder::generate_fingerprints(structure_df = structures, type = "extended")
+#save.image("imports")
+
+fingerprints_circular <- generate_fingerprints(structure_df = distinct_structures, type = "circular")
+fingerprints_maccs <- generate_fingerprints(structure_df = distinct_structures, type = "maccs")
+fingerprints_extended <- generate_fingerprints(structure_df = distinct_structures, type = "extended")
 
 
-saveRDS(activities, 'drug_target_associations_v4.rds')
+saveRDS(activities, 'compound_target_associations_v4.rds')
+readr::write_csv(activities, 'compound_target_associations_v4.csv')
 saveRDS(names$names, 'distinct_compound_names_v4.rds')
+readr::write_csv(names$names, 'distinct_compound_names_v4.csv')
+saveRDS(names$synonyms, 'distinct_compound_synonyms_v4.rds')
+readr::write_csv(names$synonyms, 'distinct_compound_synonyms_v4.csv')
+saveRDS(distinct_structures, 'compound_structures_v4.rds')
+readr::write_csv(distinct_structures, 'compound_structures_v4.csv')
 
 saveRDS(fingerprints_circular, 'db_fingerprints_circular_v4.rds')
 saveRDS(fingerprints_extended, 'db_fingerprints_extended_v4.rds')
 saveRDS(fingerprints_maccs, 'db_fingerprints_maccs_v4.rds')
 
+synapse <- reticulate::import("synapseclient")
+syn <- syn$Synapse()
+
+syn$store(synapse$File("compound_target_associations_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("compound_target_associations_v4.csv",parentId = "syn25328061"))
+syn$store(synapse$File("distinct_compound_names_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("distinct_compound_names_v4.csv",parentId = "syn25328061"))
+syn$store(synapse$File("distinct_compound_synonyms_v4.csv",parentId = "syn25328061"))
+syn$store(synapse$File("distinct_compound_synonyms_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("compound_structures_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("compound_structures_v4.csv",parentId = "syn25328061"))
+syn$store(synapse$File("db_fingerprints_circular_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("db_fingerprints_extended_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("db_fingerprints_maccs_v4.rds",parentId = "syn25328061"))
+
+generate_fingerprints <- function(structure_df, type){ 
+  
+  javamem <- getOption("java.parameters") %>% stringr::str_extract("\\d+.")
+  
+  if(grepl(".+g", javamem)){
+    
+    valid <- as.character(structure_df$std_smiles)
+    
+    parser <- rcdk::get.smiles.parser()
+    
+    message("parsing smiles")
+    input.mol <- rcdk::parse.smiles(valid, smiles.parser = parser)
+    message("doing typing")
+    pbapply::pblapply(input.mol, rcdk::do.typing)
+    message("doing aromaticity")
+    pbapply::pblapply(input.mol, rcdk::do.aromaticity)
+    message("doing isotopes")
+    pbapply::pblapply(input.mol, rcdk::do.isotopes)
+    message("generating fingerprints")
+    output <- pbapply::pblapply(input.mol, rcdk::get.fingerprint, type = type)
+    
+    names(output) <- structure_df$inchikey
+    output
+  }else{
+    message(glue::glue("not enough memory allocated for java, try restarting R and running `options(java.parameters = '-Xmx##g')` - where ## is the number of GB of memory you can provide to java. 8 gb minimum. "))
+  }
+}
+
+fp <- dtexbuilder::.parse_fingerprint("O=C1O/C(=C/Br)CCC1c1cccc2ccccc12", type = "circular")

@@ -2,7 +2,7 @@
 % Please edit documentation in R/combine_data.R
 \name{generate_fingerprints}
 \alias{generate_fingerprints}
-\title{Placeholder}
+\title{Function to generate fingerprints.}
 \usage{
 generate_fingerprints(structure_df, type)
 }
@@ -10,5 +10,5 @@ generate_fingerprints(structure_df, type)
 TBD
 }
 \description{
-Placeholder
+This function is best run on a beefy cloud instance (I tested on aws c5d.4xlarge). It will take a while, and use a lot of memory. You really must run "options(java.parameters = '-Xmx16g')" prior to loading rJava package (may require starting a new session), to prevent running into OOM errors.
 }

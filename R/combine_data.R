@@ -66,56 +66,38 @@ process_structures <- function(...){
   }  
 }
 
-
-#' Placeholder
-#' @description Placeholder
-#' @param placeholder
-#' @return TBD
-#' @export
-#' 
-.parse_fingerprint <- function(input, type) {
-  print("parsing smiles")
-  input.mol <- rcdk::parse.smiles(as.character(input))
-  print("doing typing")
-  pbapply::pblapply(input.mol, rcdk::do.typing)
-  print("doing aromaticity")
-  pbapply::pblapply(input.mol, rcdk::do.aromaticity)
-  print("doing isotopes")
-  pbapply::pblapply(input.mol, rcdk::do.isotopes)
-  print("generating fingerprints")
-  pbapply::pblapply(input.mol, rcdk::get.fingerprint, type = type)
-}
-
-#' Placeholder
-#' @description Placeholder
+#' Function to generate fingerprints. 
+#' @description This function is best run on a beefy cloud instance (I tested on aws c5d.4xlarge). It will take a while, and use a lot of memory. You really must run "options(java.parameters = '-Xmx16g')" prior to loading rJava package (may require starting a new session), to prevent running into OOM errors. 
 #' @param placeholder
 #' @return TBD
 #' @export
 #' 
 generate_fingerprints <- function(structure_df, type){ 
   
-  valid <- as.character(structure_df$std_smiles)
+  javamem <- getOption("java.parameters") %>% stringr::str_extract("\\d+.")
   
-  parser <- rcdk::get.smiles.parser()
-  foo <- list()
-  ct <- 1
-
-for(i in 1:ceiling(length(valid)/5000)){
-  if((length(valid)-(i*5000))>=0){
-    print(ct)
-    print(i*5000)
-    print(paste0("batch ", i," of ", ceiling(length(valid)/5000)))
-    foo <- append(foo, .parse_fingerprint(valid[ct:(i*5000)], type = type))
-    ct<-ct+5000
+  if(grepl(".+g", javamem)){
+    
+    valid <- as.character(structure_df$std_smiles)
+    
+    parser <- rcdk::get.smiles.parser()
+    
+    message("parsing smiles")
+    input.mol <- rcdk::parse.smiles(valid, smiles.parser = parser)
+    message("doing typing")
+    pbapply::pblapply(input.mol, rcdk::do.typing)
+    message("doing aromaticity")
+    pbapply::pblapply(input.mol, rcdk::do.aromaticity)
+    message("doing isotopes")
+    pbapply::pblapply(input.mol, rcdk::do.isotopes)
+    message("generating fingerprints")
+    output <- pbapply::pblapply(input.mol, rcdk::get.fingerprint, type = type)
+    
+    names(output) <- structure_df$inchikey
+    output
   }else{
-    print(ct)
-    print(length(valid))
-    print(paste0("batch ", i," of ", ceiling(length(valid)/5000)))
-    foo <- append(foo, .parse_fingerprint(valid[ct:length(valid)], type = type))
+    message(glue::glue("not enough memory allocated for java, try restarting R and running `options(java.parameters = '-Xmx##g')` - where ## is the number of GB of memory you can provide to java. 8 gb minimum. "))
   }
-}
-  names(foo) <- structure_df$inchikey
-  foo
 }
   
 #' Placeholder
