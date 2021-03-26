@@ -15,7 +15,7 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
   act <- .format_chembl_activities(activity_df = chembl$activity)
   
   message('processing structure data...')
-  struct <- .format_chembl_structures(activity_df = chembl$activity, structures_df = chembl$structures)
+  struct <- .format_chembl_structures(activity_df = chembl$activity, structures_df = chembl$structures, names_df = chembl$names)
   
   message('processing names data...')
   names <- .format_chembl_names(names_df = chembl$names)
@@ -32,12 +32,16 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
 #' @return TBD
 #' @export
 #' 
-.format_chembl_structures <- function(activity_df, structures_df){
+.format_chembl_structures <- function(activity_df, structures_df, names_df){
+  
+  chembl_ids <- dplyr::select(names_df, molregno, chembl_id) %>% 
+    distinct()
   
   chembl_struct <- structures_df %>%
     dplyr::distinct() %>% 
     dplyr::filter(molregno %in% activity_df$molregno) %>% 
-    dplyr::mutate(external_id = glue::glue("chembl:{molregno}")) %>% 
+    dplyr::inner_join(chembl_ids) %>% 
+    dplyr::mutate(external_id = glue::glue("chembl:{chembl_id}")) %>% 
     dplyr::rename(inchi = standard_inchi,
            inchikey = standard_inchi_key,
            smiles = canonical_smiles) %>% 
@@ -53,13 +57,17 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
 #' @return TBD
 #' @export
 #' 
-.format_chembl_activities <- function(activity_df){
+.format_chembl_activities <- function(activity_df, names_df){
+  
+  chembl_ids <- dplyr::select(names_df, molregno, chembl_id) %>% 
+    distinct()
   
   ##activities
   chembl_activities <- activity_df %>% 
+    dplyr::inner_join(chembl_ids) %>% 
     dplyr::filter(organism == "Homo sapiens") %>% 
     dplyr::filter(pchembl_value != "NULL") %>% 
-    dplyr::mutate(external_id = glue::glue("chembl:{molregno}")) %>% 
+    dplyr::mutate(external_id = glue::glue("chembl:{chembl_id}")) %>% 
     dplyr::rename(hugo_gene = component_synonym) %>% 
     dplyr::mutate(evidence_type = "quantitative") %>% 
     dplyr::mutate(database = "chembl") %>% 
@@ -77,12 +85,12 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
 #' 
 .format_chembl_names <- function(names_df){
   
-  ##activities
-  names <- names_df %>% 
-    dplyr::mutate(external_id = glue::glue("chembl:{molregno}")) %>% 
+    names <- names_df %>% 
+    dplyr::mutate(external_id = glue::glue("chembl:{chembl_id}")) %>% 
     tidyr::pivot_longer(c(pref_name, synonyms, chembl_id), names_to = "colnames", values_to = "cmpd_name") %>% 
     dplyr::select(external_id, cmpd_name) %>% 
-    dplyr::filter(cmpd_name != "NULL")
+    dplyr::filter(cmpd_name != "NULL") %>% 
+    dplyr::distinct()
   
 }
 

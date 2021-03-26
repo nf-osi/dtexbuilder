@@ -96,7 +96,7 @@ process_chemicalprobes <- function(synapse_id){
   
   .syn$get(synapse_id)$path %>%
     readr::read_csv(comment = "") %>% 
-    dplyr::mutate(external_id = glue::glue('chemicalprobes:{`Chemical Probes Portal ID`}'), .keep = 'unused') %>% 
+    dplyr::mutate(external_id = glue::glue('chemicalprobes:{`cmpd_name`}'), .keep = 'unused') %>% 
     dplyr::rename(cmpd_name = `Probe Name`, inchikey = `InChi Key`, smiles = `SMILES string`, hugo_gene = `Target name`) 
 
 }

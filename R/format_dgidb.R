@@ -9,7 +9,7 @@ prepare_dgidb_data <- function(dgidb_interactions_url, omit_sources = c("DrugBan
   readr::read_tsv(dgidb_interactions_url) %>% 
     dplyr::filter(!interaction_claim_source %in% omit_sources) %>% 
     dplyr::filter(!is.na(gene_name)) %>% 
-    dplyr::mutate(external_id = glue::glue('{interaction_claim_source}:{drug_claim_primary_name}')) %>% 
+    dplyr::mutate(external_id = glue::glue('dgidb:{drug_claim_primary_name}')) %>% 
     dplyr::select(external_id, drug_claim_primary_name, gene_name) %>% 
     purrr::set_names(c("external_id", "cmpd_name", "hugo_gene")) %>% 
     dplyr::mutate(database = "dgidb") %>% 

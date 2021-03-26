@@ -62,6 +62,7 @@ readr::write_csv(names$synonyms, 'distinct_compound_synonyms_v4.csv')
 saveRDS(distinct_structures, 'compound_structures_v4.rds')
 readr::write_csv(distinct_structures, 'compound_structures_v4.csv')
 
+
 saveRDS(fingerprints_circular, 'db_fingerprints_circular_v4.rds')
 saveRDS(fingerprints_extended, 'db_fingerprints_extended_v4.rds')
 saveRDS(fingerprints_maccs, 'db_fingerprints_maccs_v4.rds')
@@ -80,33 +81,3 @@ syn$store(synapse$File("compound_structures_v4.csv",parentId = "syn25328061"))
 syn$store(synapse$File("db_fingerprints_circular_v4.rds",parentId = "syn25328061"))
 syn$store(synapse$File("db_fingerprints_extended_v4.rds",parentId = "syn25328061"))
 syn$store(synapse$File("db_fingerprints_maccs_v4.rds",parentId = "syn25328061"))
-
-generate_fingerprints <- function(structure_df, type){ 
-  
-  javamem <- getOption("java.parameters") %>% stringr::str_extract("\\d+.")
-  
-  if(grepl(".+g", javamem)){
-    
-    valid <- as.character(structure_df$std_smiles)
-    
-    parser <- rcdk::get.smiles.parser()
-    
-    message("parsing smiles")
-    input.mol <- rcdk::parse.smiles(valid, smiles.parser = parser)
-    message("doing typing")
-    pbapply::pblapply(input.mol, rcdk::do.typing)
-    message("doing aromaticity")
-    pbapply::pblapply(input.mol, rcdk::do.aromaticity)
-    message("doing isotopes")
-    pbapply::pblapply(input.mol, rcdk::do.isotopes)
-    message("generating fingerprints")
-    output <- pbapply::pblapply(input.mol, rcdk::get.fingerprint, type = type)
-    
-    names(output) <- structure_df$inchikey
-    output
-  }else{
-    message(glue::glue("not enough memory allocated for java, try restarting R and running `options(java.parameters = '-Xmx##g')` - where ## is the number of GB of memory you can provide to java. 8 gb minimum. "))
-  }
-}
-
-fp <- dtexbuilder::.parse_fingerprint("O=C1O/C(=C/Br)CCC1c1cccc2ccccc12", type = "circular")
