@@ -12,7 +12,7 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
   chembl <- .get_chembl_files(activity_file_id, names_file_id, structures_file_id)
   
   message('processing activity data...')
-  act <- .format_chembl_activities(activity_df = chembl$activity)
+  act <- .format_chembl_activities(activity_df = chembl$activity, names_df = chembl$names)
   
   message('processing structure data...')
   struct <- .format_chembl_structures(activity_df = chembl$activity, structures_df = chembl$structures, names_df = chembl$names)
