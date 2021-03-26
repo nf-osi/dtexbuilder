@@ -63,11 +63,11 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
     dplyr::distinct()
   
   ##activities
-  chembl_activities <- activity_df %>% 
+  chembl_activities <- activity_df %>%
+    dplyr::inner_join(chembl_ids) %>%
     dplyr::filter(organism == "Homo sapiens") %>% 
     dplyr::filter(pchembl_value != "NULL") %>% 
     dplyr::mutate(external_id = glue::glue("chembl:{chembl_id}")) %>% 
-    dplyr::inner_join(chembl_ids) %>%
     dplyr::rename(hugo_gene = component_synonym) %>% 
     dplyr::mutate(evidence_type = "quantitative") %>% 
     dplyr::mutate(database = "chembl") %>% 
