@@ -35,7 +35,7 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
 .format_chembl_structures <- function(activity_df, structures_df, names_df){
   
   chembl_ids <- dplyr::select(names_df, molregno, chembl_id) %>% 
-    distinct()
+    dplyr::distinct()
   
   chembl_struct <- structures_df %>%
     dplyr::distinct() %>% 
@@ -60,7 +60,7 @@ process_chembl <- function(activity_file_id, names_file_id, structures_file_id){
 .format_chembl_activities <- function(activity_df, names_df){
   
   chembl_ids <- dplyr::select(names_df, molregno, chembl_id) %>% 
-    distinct()
+    dplyr::distinct()
   
   ##activities
   chembl_activities <- activity_df %>% 
