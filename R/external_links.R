@@ -4,55 +4,47 @@
 #' @return TBD
 #' @export
 #' 
-generate_external_links <- function(names, activities){
+generate_external_links <- function(external_ids, activities){
   
+  cl <- .cmpd_links(external_ids = external_ids)
+  
+  gl <- .gene_links(activities = activities)
+  
+  list('cmpd_links' = cl, 'gene_links' = gl)
 }
 
 
 
-.cmpd_links <- function(names){
-  db.names <- readRDS(syn$get("syn12978912")$path)
+.cmpd_links <- function(external_ids){
+
+  chembl_link <- "<a href='https://www.ebi.ac.uk/chembl/compound/inspect/{link_string}', target = '_blank'>ChEMBL</a>"
+  dgidb_link <- "<a href='http://www.dgidb.org/interaction_search_results/{link_string}', target = '_blank'>DGIdb</a>"
+  drugbank_link <- "<a href='https://go.drugbank.com/drugs/{link_string}', target = '_blank'>DrugBank</a>"
+  chemicalprobes_link <- "<a href='https://www.chemicalprobes.org/{link_string}', target = '_blank'>ChemicalProbes</a>"
+    
+  links <- external_ids %>% 
+    dplyr::select(external_id, inchikey, database) %>% 
+    dplyr::distinct() %>% 
+    dplyr::mutate(link_string = stringr::str_remove(external_id, ".+?\\:")) %>% 
+    dplyr::mutate(link_string = sapply(link_string, function(x) URLencode(x))) %>%
+    dplyr::mutate(link = dplyr::case_when(database == "chembl" ~ glue::glue(chembl_link),
+                                   database == "dgidb" ~ glue::glue(dgidb_link),
+                                   database == "chemicalprobes" ~ glue::glue(chemicalprobes_link),
+                                   database == "drugbank" ~ glue::glue(drugbank_link))) %>% 
+    dplyr::select(-link_string)
   
-  chembl.internal.ids <- db.names %>% 
-    filter(database == "chembl") %>%
-    select(external_id, internal_id, database) %>% 
-    distinct()
+}
+
+
+.gene_links <- function(activities){
   
-  chembl.links <- read.table(syn$get("syn12972665")$path, sep = "\t", quote = "", comment.char = "", header = T) %>% 
-    select(molregno, chembl_id) %>% 
-    distinct() %>% 
-    set_names(c("external_id", "link")) %>% 
-    mutate(external_id = as.character(external_id)) %>% 
-    right_join(chembl.internal.ids) %>% 
-    mutate(link = paste0("<a href='https://www.ebi.ac.uk/chembl/compound/inspect/",link,"', target = '_blank'>",database,"</a>")) %>% 
-    select(internal_id, link, external_id, database) %>% 
-    distinct()
+  gene_link <- "<a href = 'http://www.genecards.org/cgi-bin/carddisp.pl?gene={link_string}', target = '_blank'>GeneCards</a>"
+    
+  genes <- unique(activities$hugo_gene) %>% 
+    dplyr::as_tibble() %>% 
+    purrr::set_names(c("hugo_gene")) %>% 
+    dplyr::mutate(link_string = sapply(hugo_gene, function(x) URLencode(x))) %>%
+    dplyr::mutate(link = glue::glue(gene_link)) %>% 
+    dplyr::select(-link_string)
   
-  dgidb.links <- read.table(syn$get("syn12684108")$path, sep = "\t", quote = "", header = T) %>% 
-    select(drug_claim_primary_name, drug_claim_name, drug_name, drug_chembl_id) %>% 
-    distinct() %>% 
-    mutate(drug_claim_primary_name2 = drug_claim_primary_name) %>% 
-    gather("namesource", "name", -drug_claim_primary_name) %>% 
-    select(-namesource) %>% 
-    filter(!grepl("^\\d+$", name) & name != "") %>% 
-    set_names(c("external_id", "common_name")) %>% 
-    distinct() %>% 
-    left_join(db.names) %>% 
-    mutate(link = sapply(external_id, function(x) URLencode(x))) %>%
-    mutate(link = paste0("<a href='http://www.dgidb.org/interaction_search_results/",link,"', target = '_blank'>",database,"</a>")) %>% 
-    filter(!is.na(internal_id)) %>% 
-    select(internal_id, link, external_id, database) %>% 
-    distinct()
-  
-  drugbank.links <- db.names %>% 
-    filter(database == "drugbank") %>% 
-    mutate(link = sapply(external_id, function(x) URLencode(x))) %>%
-    mutate(link = paste0("<a href='https://www.drugbank.ca/drugs/",link,"', target = '_blank'>",database,"</a>")) %>% 
-    select(internal_id, link, external_id, database) %>% 
-    distinct()
-  
-  db.links <- bind_rows(chembl.links, drugbank.links, dgidb.links)
-  db.links$link <- gsub(">chembl<", ">ChEMBL<", db.links$link)
-  db.links$link <- gsub(">dgidb<", ">DGIdb<", db.links$link)
-  db.links$link <- gsub(">drugbank<", ">DrugBank<", db.links$link)
 }

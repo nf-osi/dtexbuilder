@@ -265,7 +265,7 @@ filter_structures <- function(processed_structures, processed_activities){
 #' 
 process_external_ids <- function(processed_structures, processed_activities){
   
-  ext_id_inchikey <- dplyr::select(processed_structures, external_id, inchikey) %>% 
+  ext_id_inchikey <- dplyr::select(processed_structures, external_id, inchikey, database) %>% 
     dplyr::filter(inchikey %in% processed_activities$inchikey) %>% 
     dplyr::distinct()
   
