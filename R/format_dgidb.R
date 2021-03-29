@@ -119,7 +119,8 @@ process_dgidb <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, pat
     dplyr::group_by(inchikey) %>% 
     dplyr::mutate(cmpd_name = cmpd_name_orig[1]) %>%  ##first occurrence of name is the "preferred name" 
     dplyr::mutate(external_id  = glue::glue("dgidb:{cmpd_name}")) %>% 
-    dplyr::distinct()
+    dplyr::distinct() %>%
+    dplyr::ungroup()
     
 }
 

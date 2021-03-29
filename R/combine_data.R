@@ -113,10 +113,11 @@ process_activities <- function(processed_structures, ...){
   
   dfs <- purrr::map(list(...), function(x){
     x %>% 
-      dplyr::mutate_all(as.character)
+      dplyr::mutate_all(as.character) 
   })
   
-  activities <- dplyr::bind_rows(dfs) %>% 
+  activities <- dplyr::bind_rows(dfs) %>%
+    dplyr::select(external_id, hugo_gene, pchembl_value, standard_relation, standard_value, standard_units, standard_type, evidence_type) %>% 
     dplyr::mutate(dplyr::across(c('pchembl_value','standard_value'), as.numeric))
   
   
