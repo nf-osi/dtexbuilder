@@ -13,9 +13,9 @@ dgidb_df <- dtexbuilder::prepare_dgidb_data("https://www.dgidb.org/data/monthly_
 dtexbuilder::prepare_dgidb_names_for_pubchem(dgidb_df)
 
 dgidb <- dtexbuilder::process_dgidb(dgidb_df, 
-                                    path_to_inchi_tsv = "~/ids.txt",
-                                    path_to_inchikey_tsv = "~/inchikey.txt",
-                                    path_to_smiles_tsv = "~/smiles.txt")
+                                    path_to_inchi_tsv = "~/Downloads/ids.txt",
+                                    path_to_inchikey_tsv = "~/Downloads/inchikey.txt",
+                                    path_to_smiles_tsv = "~/Downloads/smiles.txt")
 
 #ChemicalProbes
 chemicalprobes <- dtexbuilder::process_chemicalprobes('syn25253561')

@@ -4,7 +4,7 @@
 \alias{.format_chembl_activities}
 \title{Organize chembl dataframes.}
 \usage{
-.format_chembl_activities(activity_df)
+.format_chembl_activities(activity_df, names_df)
 }
 \value{
 TBD

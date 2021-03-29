@@ -2,7 +2,7 @@
 % Please edit documentation in R/format_dgidb.R
 \name{.format_dgidb_structures}
 \alias{.format_dgidb_structures}
-\title{Placeholder}
+\title{This is a a draft function.}
 \usage{
 .format_dgidb_structures(
   dgidb_df,
@@ -13,7 +13,12 @@
 }
 \value{
 TBD
+Placeholder
+
+TBD
 }
 \description{
+Placeholder
+
 Placeholder
 }

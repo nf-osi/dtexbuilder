@@ -4,7 +4,7 @@
 \alias{.format_chembl_structures}
 \title{Organize chembl structures}
 \usage{
-.format_chembl_structures(activity_df, structures_df)
+.format_chembl_structures(activity_df, structures_df, names_df)
 }
 \value{
 TBD

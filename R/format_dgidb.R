@@ -9,12 +9,9 @@ prepare_dgidb_data <- function(dgidb_interactions_url, omit_sources = c("DrugBan
   readr::read_tsv(dgidb_interactions_url) %>% 
     dplyr::filter(!interaction_claim_source %in% omit_sources) %>% 
     dplyr::filter(!is.na(gene_name)) %>% 
-    dplyr::mutate(external_id = glue::glue('dgidb:{drug_claim_primary_name}')) %>% 
-    dplyr::select(external_id, drug_claim_primary_name, gene_name) %>% 
-    purrr::set_names(c("external_id", "cmpd_name", "hugo_gene")) %>% 
-    dplyr::mutate(database = "dgidb") %>% 
-    dplyr::distinct()
-
+    dplyr::select(drug_claim_primary_name, gene_name) %>% 
+    purrr::set_names(c("cmpd_name_orig", "hugo_gene")) %>% 
+    dplyr::mutate(database = "dgidb") 
 }
 
 #' Placeholder
@@ -26,7 +23,7 @@ prepare_dgidb_data <- function(dgidb_interactions_url, omit_sources = c("DrugBan
 prepare_dgidb_names_for_pubchem <- function(dgidb_df){
   
   dgidb_df %>% 
-    dplyr::select(cmpd_name) %>% 
+    dplyr::select(cmpd_name_orig) %>% 
     dplyr::distinct() %>% 
     readr::write_tsv("dgidb_cmpd_names.tsv")
   
@@ -41,15 +38,15 @@ prepare_dgidb_names_for_pubchem <- function(dgidb_df){
 #' @export
 #' 
 process_dgidb <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, path_to_smiles_tsv){
-
-  message('processing activity data...')
-  act <- .format_dgidb_activities(dgidb_df = dgidb_df)
   
   message('processing structure data...')
   struct <- .format_dgidb_structures(dgidb_df = dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, path_to_smiles_tsv)
   
   message('processing names data...')
-  names <- .format_dgidb_names(dgidb_df = dgidb_df)
+  names <- .format_dgidb_names(dgidb_structures = struct)
+  
+  message('processing activity data...')
+  act <- .format_dgidb_activities(dgidb_df = dgidb_df, dgidb_structures = struct)
   
   list("activities" = act, "structures" = struct, "names" = names)
   
@@ -59,35 +56,33 @@ process_dgidb <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, pat
 #' @description Placeholder
 #' @param placeholder
 #' @return TBD
-#' @export
-#' 
-.query_and_format_dgidb_structures <- function(dgidb_df){
-  
-  external_ids <- dgidb_df %>% 
-    dplyr::select(external_id, cmpd_name, database) %>% 
-    dplyr::distinct() 
-  
-  inchi <- external_ids %>% 
-    dplyr::mutate(inchi = sapply(cmpd_name, .convert_id_to_structure_pubchem, id_type = "name", output_type = "InChI"))
-  
-  inchikey <- readr::read_tsv(path_to_inchikey_tsv) %>% 
-    purrr::set_names(c("cmpd_name", "inchikey")) %>%
-    dplyr::filter(!is.na(inchikey)) %>% 
-    dplyr::group_by(cmpd_name) %>% 
-    dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" InChIKey. This will certainly not be error free. 
-    dplyr::ungroup()
-  
-  smiles <- readr::read_tsv(path_to_smiles_tsv) %>% 
-    purrr::set_names(c("cmpd_name", "smiles")) %>%
-    dplyr::filter(!is.na(smiles)) %>% 
-    dplyr::group_by(cmpd_name) %>% 
-    dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" smiles This will certainly not be error free. 
-    dplyr::ungroup()     
-  
-  df <- dplyr::inner_join(inchi, inchikey) %>% 
-    dplyr::inner_join(smiles) %>% 
-    dplyr::inner_join(external_ids)
-}
+# .query_and_format_dgidb_structures <- function(dgidb_df){
+#   
+#   external_ids <- dgidb_df %>% 
+#     dplyr::select(external_id, cmpd_name, database) %>% 
+#     dplyr::distinct() 
+#   
+#   inchi <- external_ids %>% 
+#     dplyr::mutate(inchi = sapply(cmpd_name, .convert_id_to_structure_pubchem, id_type = "name", output_type = "InChI"))
+#   
+#   inchikey <- readr::read_tsv(path_to_inchikey_tsv) %>% 
+#     purrr::set_names(c("cmpd_name", "inchikey")) %>%
+#     dplyr::filter(!is.na(inchikey)) %>% 
+#     dplyr::group_by(cmpd_name) %>% 
+#     dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" InChIKey. This will certainly not be error free. 
+#     dplyr::ungroup()
+#   
+#   smiles <- readr::read_tsv(path_to_smiles_tsv) %>% 
+#     purrr::set_names(c("cmpd_name", "smiles")) %>%
+#     dplyr::filter(!is.na(smiles)) %>% 
+#     dplyr::group_by(cmpd_name) %>% 
+#     dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" smiles This will certainly not be error free. 
+#     dplyr::ungroup()     
+#   
+#   df <- dplyr::inner_join(inchi, inchikey) %>% 
+#     dplyr::inner_join(smiles) %>% 
+#     dplyr::inner_join(external_ids)
+# }
 
 
 #' Placeholder
@@ -97,35 +92,35 @@ process_dgidb <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, pat
 #' @export
 #' 
 .format_dgidb_structures <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, path_to_smiles_tsv){
-  
-  external_ids <- dgidb_df %>% 
-    dplyr::select(external_id, cmpd_name, database) %>% 
-    dplyr::distinct() 
 
   inchi <- readr::read_tsv(path_to_inchi_tsv) %>% 
-    purrr::set_names(c("cmpd_name", "inchi")) %>%
+    purrr::set_names(c("cmpd_name_orig", "inchi")) %>%
     dplyr::filter(!is.na(inchi)) %>% 
-    dplyr::group_by(cmpd_name) %>% 
+    dplyr::group_by(cmpd_name_orig) %>% 
     dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" InChI. This will certainly not be error free. 
     dplyr::ungroup()
   
   inchikey <- readr::read_tsv(path_to_inchikey_tsv) %>% 
-    purrr::set_names(c("cmpd_name", "inchikey")) %>%
+    purrr::set_names(c("cmpd_name_orig", "inchikey")) %>%
     dplyr::filter(!is.na(inchikey)) %>% 
-    dplyr::group_by(cmpd_name) %>% 
+    dplyr::group_by(cmpd_name_orig) %>% 
     dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" InChIKey. This will certainly not be error free. 
     dplyr::ungroup()
   
   smiles <- readr::read_tsv(path_to_smiles_tsv) %>% 
-    purrr::set_names(c("cmpd_name", "smiles")) %>%
+    purrr::set_names(c("cmpd_name_orig", "smiles")) %>%
     dplyr::filter(!is.na(smiles)) %>% 
-    dplyr::group_by(cmpd_name) %>% 
+    dplyr::group_by(cmpd_name_orig) %>% 
     dplyr::slice(1) %>% #some compounds have multiple, pick first occurrence as "real" smiles This will certainly not be error free. 
     dplyr::ungroup()     
   
   df <- dplyr::inner_join(inchi, inchikey) %>% 
-    dplyr::inner_join(smiles) %>% 
-    dplyr::inner_join(external_ids)
+    dplyr::inner_join(smiles) %>%
+    dplyr::group_by(inchikey) %>% 
+    dplyr::mutate(cmpd_name = cmpd_name_orig[1]) %>%  ##first occurrence of name is the "preferred name" 
+    dplyr::mutate(external_id  = glue::glue("dgidb:{cmpd_name}")) %>% 
+    dplyr::distinct()
+    
 }
 
 #' Placeholder
@@ -134,10 +129,16 @@ process_dgidb <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, pat
 #' @return TBD
 #' @export
 #' 
-.format_dgidb_activities <- function(dgidb_df){
+.format_dgidb_activities <- function(dgidb_df, dgidb_structures){
+  
+  external_ids <- dgidb_structures %>% 
+    dplyr::select(cmpd_name, external_id, cmpd_name_orig) %>% 
+    dplyr::distinct()
   
   dgidb_df %>% 
-    tibble::add_column(evidence_type = "qualitative") 
+    dplyr::inner_join(external_ids) %>% 
+    tibble::add_column(evidence_type = "qualitative") %>% 
+    dplyr::select(-cmpd_name_orig)
   
 }
 
@@ -147,10 +148,10 @@ process_dgidb <- function(dgidb_df, path_to_inchi_tsv, path_to_inchikey_tsv, pat
 #' @return TBD
 #' @export
 #' 
-.format_dgidb_names <- function(dgidb_df){
+.format_dgidb_names <- function(dgidb_structures){
   
-  external_ids <- dgidb_df %>% 
-    dplyr::select(external_id, cmpd_name) %>% 
+  external_ids <- dgidb_structures %>% 
+    dplyr::select(cmpd_name, external_id) %>% 
     dplyr::distinct()
   
 }

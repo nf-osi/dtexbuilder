@@ -4,7 +4,7 @@
 \alias{.format_dgidb_names}
 \title{Placeholder}
 \usage{
-.format_dgidb_names(dgidb_df)
+.format_dgidb_names(dgidb_structures)
 }
 \value{
 TBD
