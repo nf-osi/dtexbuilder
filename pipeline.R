@@ -13,9 +13,9 @@ dgidb_df <- dtexbuilder::prepare_dgidb_data("https://www.dgidb.org/data/monthly_
 dtexbuilder::prepare_dgidb_names_for_pubchem(dgidb_df)
 
 dgidb <- dtexbuilder::process_dgidb(dgidb_df, 
-                                    path_to_inchi_tsv = "~/Downloads/ids.txt",
-                                    path_to_inchikey_tsv = "~/Downloads/inchikey.txt",
-                                    path_to_smiles_tsv = "~/Downloads/smiles.txt")
+                                    path_to_inchi_tsv = "~/ids.txt",
+                                    path_to_inchikey_tsv = "~/inchikey.txt",
+                                    path_to_smiles_tsv = "~/smiles.txt")
 
 #ChemicalProbes
 chemicalprobes <- dtexbuilder::process_chemicalprobes('syn25253561')
@@ -39,7 +39,8 @@ names <- dtexbuilder::process_names(processed_structures = structures,
                                     processed_activities = activities,
                                     chembl$names,
                                     dgidb$names,
-                                    chemicalprobes$names)
+                                    chemicalprobes$names,
+                                    drugbank$names)
 
 external_ids <- dtexbuilder::process_external_ids(processed_structures = structures, 
                                                   processed_activities = activities)
@@ -48,10 +49,11 @@ distinct_structures <- dtexbuilder::filter_structures(processed_structures = str
 
 #save.image("imports")
 
-fingerprints_circular <- generate_fingerprints(structure_df = distinct_structures, type = "circular")
-fingerprints_maccs <- generate_fingerprints(structure_df = distinct_structures, type = "maccs")
-fingerprints_extended <- generate_fingerprints(structure_df = distinct_structures, type = "extended")
+fingerprints_circular <- dtexbuilder::generate_fingerprints(structure_df = distinct_structures, type = "circular")
+fingerprints_maccs <- dtexbuilder::generate_fingerprints(structure_df = distinct_structures, type = "maccs")
+fingerprints_extended <- dtexbuilder::generate_fingerprints(structure_df = distinct_structures, type = "extended")
 
+links <- dtexbuilder::generate_external_links(external_ids = external_ids, activities = activities)
 
 saveRDS(activities, 'compound_target_associations_v4.rds')
 readr::write_csv(activities, 'compound_target_associations_v4.csv')
@@ -61,6 +63,12 @@ saveRDS(names$synonyms, 'distinct_compound_synonyms_v4.rds')
 readr::write_csv(names$synonyms, 'distinct_compound_synonyms_v4.csv')
 saveRDS(distinct_structures, 'compound_structures_v4.rds')
 readr::write_csv(distinct_structures, 'compound_structures_v4.csv')
+saveRDS(external_ids, 'external_ids_v4.rds')
+readr::write_csv(external_ids, 'external_ids_v4.csv')
+saveRDS(links$cmpd_links, 'cmpd_links_v4.rds')
+readr::write_csv(links$cmpd_links, 'cmpd_links_v4.csv')
+saveRDS(links$gene_links, 'gene_links_v4.rds')
+readr::write_csv(links$gene_links, 'gene_links_v4.csv')
 
 
 saveRDS(fingerprints_circular, 'db_fingerprints_circular_v4.rds')
@@ -68,7 +76,8 @@ saveRDS(fingerprints_extended, 'db_fingerprints_extended_v4.rds')
 saveRDS(fingerprints_maccs, 'db_fingerprints_maccs_v4.rds')
 
 synapse <- reticulate::import("synapseclient")
-syn <- syn$Synapse()
+syn <- synapse$Synapse()
+syn$login()
 
 syn$store(synapse$File("compound_target_associations_v4.rds",parentId = "syn25328061"))
 syn$store(synapse$File("compound_target_associations_v4.csv",parentId = "syn25328061"))
@@ -81,3 +90,10 @@ syn$store(synapse$File("compound_structures_v4.csv",parentId = "syn25328061"))
 syn$store(synapse$File("db_fingerprints_circular_v4.rds",parentId = "syn25328061"))
 syn$store(synapse$File("db_fingerprints_extended_v4.rds",parentId = "syn25328061"))
 syn$store(synapse$File("db_fingerprints_maccs_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("external_ids_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("external_ids_v4.csv",parentId = "syn25328061"))
+syn$store(synapse$File("cmpd_links_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("cmpd_links_v4.csv",parentId = "syn25328061"))
+syn$store(synapse$File("gene_links_v4.rds",parentId = "syn25328061"))
+syn$store(synapse$File("gene_links_v4.csv",parentId = "syn25328061"))
+
