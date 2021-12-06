@@ -33,7 +33,9 @@
   
   statement <- glue::glue('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchikey/{inchikey}/property/InChI/xml')
   
-  res <- httr::GET(statement)
+  res <- httr::with_config(httr::config(http_version = 0), {
+    httr::GET(statement)
+    })
   
   if(res$status_code==200){
     inchi <- XML::xmlToList(rawToChar(res$content))$Properties$InChI
@@ -59,7 +61,10 @@
   
   statement <- glue::glue('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/{id_type}/{input}/property/{output_type}/xml')
   
-  res <- httr::GET(statement)
+  res <- httr::with_config(httr::config(http_version = 0), {
+    httr::GET(statement)
+  })
+  
   if(res$status_code==200){
     res_2 <- XML::xmlToList(rawToChar(res$content))
     struct <- purrr::pluck(res_2, "Properties", 2)
